@@ -191,6 +191,31 @@ describe('projection', () => {
     const noSuper = project({ ...workLate, includeNZSuper: false })
     expect(r.totalNZSuperNet).toBeGreaterThan(noSuper.totalNZSuperNet)
   })
+
+  it('locks KiwiSaver until 65 — an early retiree funded only by KiwiSaver falls short before 65', () => {
+    const earlyRetiree: Inputs = {
+      ...NZ_DEFAULTS,
+      currentAge: 59,
+      retirementAge: 60,
+      nzSuperAge: 65,
+      kiwiSaverBalance: 500_000,
+      taxableBalance: 5_000, // too thin to bridge 60 → 65 on its own
+      annualSpending: 45_000,
+      returnScenario: 'expected',
+    }
+    const r = project(earlyRetiree)
+    const at63 = r.series.find((p) => p.age === 63)!
+    // KiwiSaver can't be touched before 65, so the thin personal account is exhausted
+    // and a shortfall appears in the bridge years despite a large total portfolio.
+    expect(r.depletionAge).not.toBeNull()
+    expect(r.depletionAge!).toBeLessThan(65)
+    expect(at63.shortfall).toBeGreaterThan(0)
+    // ...and the locked KiwiSaver is still intact (only grown, never drawn) before 65.
+    expect(at63.kiwiSaver).toBeGreaterThan(earlyRetiree.kiwiSaverBalance)
+    // The same wealth held in the personal account (no lock-in) bridges the gap fine.
+    const inTaxable = project({ ...earlyRetiree, kiwiSaverBalance: 5_000, taxableBalance: 500_000 })
+    expect(inTaxable.depletionAge === null || inTaxable.depletionAge >= 65).toBe(true)
+  })
 })
 
 describe('sustainable spending', () => {
