@@ -164,6 +164,33 @@ describe('projection', () => {
     const bad = project({ ...NZ_DEFAULTS, returnScenario: 'terrible' })
     expect(bad.estateAtPlanning).toBeLessThanOrEqual(expected.estateAtPlanning)
   })
+
+  it('taxes the personal account at a lower marginal rate in retirement', () => {
+    const highEarner: Inputs = { ...NZ_DEFAULTS, currentIncome: 250_000, returnScenario: 'expected', feePct: 0 }
+    const comp: ReturnComposition = {
+      eligibleDividendsPct: highEarner.eligibleDividendsPct,
+      foreignDividendsPct: highEarner.foreignDividendsPct,
+      unrealizedGainsPct: highEarner.unrealizedGainsPct,
+      realizedGainsPct: highEarner.realizedGainsPct,
+      interestIncomePct: highEarner.interestIncomePct,
+      foreignWithholdingTaxPct: highEarner.foreignWithholdingTaxPct,
+    }
+    // Retirement income is far below a $250k salary, so the reported after-tax taxable
+    // return is higher than if the working (39%) rate were used for all years.
+    const workingRateReturnPct = taxableAccountAfterTaxReturn(comp, 250_000) * 100
+    expect(project(highEarner).taxableReturnPct).toBeGreaterThan(workingRateReturnPct)
+  })
+
+  it('pays NZ Super while still working past the eligibility age', () => {
+    const workLate: Inputs = { ...NZ_DEFAULTS, retirementAge: 70, nzSuperAge: 65 }
+    const r = project(workLate)
+    const stillWorking = r.series.find((p) => p.age === 67)!
+    expect(stillWorking.working).toBe(true)
+    expect(stillWorking.nzSuperNet).toBeGreaterThan(0)
+    // It isn't income-tested, so working past 65 with Super lifts lifetime Super.
+    const noSuper = project({ ...workLate, includeNZSuper: false })
+    expect(r.totalNZSuperNet).toBeGreaterThan(noSuper.totalNZSuperNet)
+  })
 })
 
 describe('sustainable spending', () => {

@@ -37,8 +37,9 @@ export default function AssumptionsNote({ marginalRatePct, prescribedInvestorRat
         </p>
         <p>
           <strong>NZ&nbsp;Superannuation.</strong> A flat, universal pension from age&nbsp;65. Unlike Canada&rsquo;s
-          OAS it is not income- or asset-tested, so other income doesn&rsquo;t claw it back. The amount depends on your
-          living situation and is taxed as income. A <strong>couple</strong> is modelled as a pooled household &mdash;
+          OAS it is not income- or asset-tested, so other income doesn&rsquo;t claw it back &mdash; it is paid even if
+          you keep working past&nbsp;65 (the after-tax amount is then saved). The amount depends on your living situation
+          and is taxed as income. A <strong>couple</strong> is modelled as a pooled household &mdash;
           combined balances and income, but NZ&nbsp;Super counted for both partners (each taxed separately). The default
           figure is an approximate gross 2025 rate &mdash; check the current MSD rate and edit it.
         </p>
@@ -47,9 +48,9 @@ export default function AssumptionsNote({ marginalRatePct, prescribedInvestorRat
           <strong>not taxed</strong>, and there is no tax on the withdrawal event itself &mdash; unlike a Canadian RRSP.
           Dividends and interest are taxed annually as a drag: inside KiwiSaver (a PIE) at your PIR (
           {prescribedInvestorRatePct.toFixed(0)}%, capped at 28%); in a personal account at your marginal rate (
-          {marginalRatePct.toFixed(1)}%). Because withdrawals aren&rsquo;t taxed, the order you draw accounts in barely
-          matters in NZ &mdash; which is why PWL&rsquo;s Canadian &ldquo;compare withdrawal strategies&rdquo; tab is
-          omitted here.
+          {marginalRatePct.toFixed(1)}% on your current income, falling once your salary stops in retirement). Because
+          withdrawals aren&rsquo;t taxed, the order you draw accounts in barely matters in NZ &mdash; which is why
+          PWL&rsquo;s Canadian &ldquo;compare withdrawal strategies&rdquo; tab is omitted here.
         </p>
         <p>
           <strong>Caveats.</strong> Charts can be shown in nominal or today&rsquo;s dollars; the headline figures

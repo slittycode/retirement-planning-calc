@@ -62,14 +62,26 @@ function compositionOf(inputs: Inputs): ReturnComposition {
   }
 }
 
-/** After-tax annual return for each account, including the scenario shift and fee drag. */
-export function accountReturns(inputs: Inputs): { kiwiSaver: number; taxable: number } {
+/**
+ * After-tax annual return for each account, including the scenario shift and fee drag.
+ * The taxable account carries two rates: `taxable` uses the working-income marginal
+ * rate, while `taxableRetired` uses the lower rate that applies once salary stops —
+ * a NZ retiree's only taxable income is NZ Super, taxable other income, and the
+ * account's own dividends/interest (withdrawals and capital gains aren't taxed).
+ */
+export function accountReturns(inputs: Inputs): { kiwiSaver: number; taxable: number; taxableRetired: number } {
   const comp = compositionOf(inputs)
   const delta = scenarioReturnDelta(inputs.returnScenario, inputs.assetAllocationPct)
   const fee = Math.max(0, inputs.feePct) / 100
+  const incomeYieldPct = comp.eligibleDividendsPct + comp.foreignDividendsPct + comp.interestIncomePct
+  const retirementTaxableIncome =
+    (inputs.includeNZSuper ? inputs.nzSuperAnnualGross : 0) +
+    (inputs.otherIncomeTaxable ? Math.max(0, inputs.otherIncomeAnnual) : 0) +
+    Math.max(0, inputs.taxableBalance) * (incomeYieldPct / 100)
   return {
     kiwiSaver: pieAfterTaxReturn(comp, inputs.prescribedInvestorRatePct) + delta - fee,
     taxable: taxableAccountAfterTaxReturn(comp, inputs.currentIncome) + delta - fee,
+    taxableRetired: taxableAccountAfterTaxReturn(comp, retirementTaxableIncome) + delta - fee,
   }
 }
 
@@ -104,12 +116,18 @@ export function nzSuperNetForAge(inputs: Inputs, age: number, inflFactor: number
  * drag), which is why this tool omits PWL's Canadian withdrawal-sequencing
  * optimiser.
  *
+ * NZ Super isn't income-tested, so it is also paid while still working past the
+ * eligibility age; with no spending drawn in those years its after-tax amount is
+ * saved into the taxable account.
+ *
  * One-off lump sums (windfalls / costs) are applied at their age in either phase.
  * Returns are a constant annual after-tax rate per account, shifted by the chosen
- * scenario percentile and reduced by the investment fee.
+ * scenario percentile and reduced by the investment fee. The taxable account uses a
+ * lower rate in retirement, since the investor's marginal rate falls once salary stops.
  */
 export function project(inputs: Inputs): ProjectionResult {
-  const { kiwiSaver: kiwiSaverReturn, taxable: taxableReturn } = accountReturns(inputs)
+  const { kiwiSaver: kiwiSaverReturn, taxable: taxableReturn, taxableRetired: taxableRetiredReturn } =
+    accountReturns(inputs)
   const infl = inputs.inflationPct / 100
   const wage = inputs.wageGrowthPct / 100
 
@@ -157,6 +175,14 @@ export function project(inputs: Inputs): ProjectionResult {
       const govt = kiwiSaverGovtContribution(employee, income, age)
       kiwiSaver += employee + employer + govt
       taxable += inputs.annualTaxableSavings * Math.pow(1 + wage, t)
+
+      // NZ Super isn't income-tested, so it's paid even while still working past the
+      // eligibility age. With no spending drawn this year, the after-tax amount is saved.
+      nzSuperNet = nzSuperNetForAge(inputs, age, inflFactor)
+      if (nzSuperNet > 0) {
+        totalNZSuperNet += nzSuperNet
+        taxable += nzSuperNet
+      }
     } else {
       // Decumulation: guaranteed/other income first, then draw the gap from savings.
       const yearsIntoRetirement = age - retireAge
@@ -187,9 +213,9 @@ export function project(inputs: Inputs): ProjectionResult {
 
     if (shortfall > 0.005 && depletionAge === null) depletionAge = age
 
-    // Grow the balances for the year.
+    // Grow the balances for the year (taxable at the rate for this life phase).
     kiwiSaver = Math.max(0, kiwiSaver * (1 + kiwiSaverReturn))
-    taxable = Math.max(0, taxable * (1 + taxableReturn))
+    taxable = Math.max(0, taxable * (1 + (working ? taxableReturn : taxableRetiredReturn)))
 
     const portfolio = kiwiSaver + taxable
     if (portfolio > peakPortfolio) {
@@ -227,6 +253,6 @@ export function project(inputs: Inputs): ProjectionResult {
     finalAge: endAge,
     totalNZSuperNet,
     kiwiSaverReturnPct: kiwiSaverReturn * 100,
-    taxableReturnPct: taxableReturn * 100,
+    taxableReturnPct: taxableRetiredReturn * 100,
   }
 }
