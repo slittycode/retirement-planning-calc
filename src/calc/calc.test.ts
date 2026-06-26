@@ -14,7 +14,7 @@ import {
   scenarioReturnDelta,
   EQUITY_YIELDS,
 } from './portfolio'
-import { project, sustainableSpending } from './project'
+import { project, sustainableSpending, kiwiSaverGovtContribution, KIWISAVER_GOVT_MAX } from './project'
 import { NZ_DEFAULTS } from '../defaults'
 import type { Inputs } from '../types'
 
@@ -91,6 +91,19 @@ describe('scenarios', () => {
   })
 })
 
+describe('KiwiSaver government contribution', () => {
+  it('matches 25% of the employee contribution up to the cap', () => {
+    expect(kiwiSaverGovtContribution(800, 40, 60_000)).toBeCloseTo(200, 5)
+    expect(kiwiSaverGovtContribution(5_000, 40, 60_000)).toBeCloseTo(KIWISAVER_GOVT_MAX, 5)
+  })
+
+  it('is zero from age 65, with no contribution, or over the income cap', () => {
+    expect(kiwiSaverGovtContribution(1_500, 65, 60_000)).toBe(0)
+    expect(kiwiSaverGovtContribution(0, 40, 60_000)).toBe(0)
+    expect(kiwiSaverGovtContribution(1_500, 40, 200_000)).toBe(0)
+  })
+})
+
 describe('projection', () => {
   it('spans current age through the planning age', () => {
     const r = project(NZ_DEFAULTS)
@@ -151,6 +164,33 @@ describe('projection', () => {
     const bad = project({ ...NZ_DEFAULTS, returnScenario: 'terrible' })
     expect(bad.estateAtPlanning).toBeLessThanOrEqual(expected.estateAtPlanning)
   })
+
+  it('taxes the personal account at a lower marginal rate in retirement', () => {
+    const highEarner: Inputs = { ...NZ_DEFAULTS, currentIncome: 250_000, returnScenario: 'expected' }
+    const comp: ReturnComposition = {
+      eligibleDividendsPct: highEarner.eligibleDividendsPct,
+      foreignDividendsPct: highEarner.foreignDividendsPct,
+      unrealizedGainsPct: highEarner.unrealizedGainsPct,
+      realizedGainsPct: highEarner.realizedGainsPct,
+      interestIncomePct: highEarner.interestIncomePct,
+      foreignWithholdingTaxPct: highEarner.foreignWithholdingTaxPct,
+    }
+    // Retirement income is far below a $250k salary, so the after-tax taxable
+    // return reported is higher than if the working (39%) rate were used.
+    const workingRateReturnPct = taxableAccountAfterTaxReturn(comp, 250_000) * 100
+    expect(project(highEarner).taxableReturnPct).toBeGreaterThan(workingRateReturnPct)
+  })
+
+  it('pays NZ Super while still working past the eligibility age', () => {
+    const workLate: Inputs = { ...NZ_DEFAULTS, retirementAge: 70, nzSuperAge: 65 }
+    const r = project(workLate)
+    const stillWorking = r.series.find((p) => p.age === 67)!
+    expect(stillWorking.working).toBe(true)
+    expect(stillWorking.nzSuperNet).toBeGreaterThan(0)
+    // It isn't income-tested, so working past 65 with Super lifts lifetime Super.
+    const noSuper = project({ ...workLate, includeNZSuper: false })
+    expect(r.totalNZSuperNet).toBeGreaterThan(noSuper.totalNZSuperNet)
+  })
 })
 
 describe('sustainable spending', () => {
@@ -163,5 +203,14 @@ describe('sustainable spending', () => {
   it('spending meaningfully above the sustainable level fails', () => {
     const s = sustainableSpending(NZ_DEFAULTS)
     expect(project({ ...NZ_DEFAULTS, annualSpending: s * 1.2 }).moneyLasts).toBe(false)
+  })
+
+  it('rises with a larger starting balance', () => {
+    const base = sustainableSpending(NZ_DEFAULTS)
+    const richer = sustainableSpending({
+      ...NZ_DEFAULTS,
+      taxableBalance: NZ_DEFAULTS.taxableBalance + 200_000,
+    })
+    expect(richer).toBeGreaterThan(base)
   })
 })

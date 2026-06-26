@@ -17,8 +17,9 @@ export default function AssumptionsNote({ marginalRatePct, prescribedInvestorRat
         <p>
           <strong>The projection.</strong> Year by year, from your current age to your planning age. While you work,
           income grows with wages and feeds KiwiSaver (your contribution, your employer&rsquo;s, and the government
-          contribution up to {`$521`}/yr). In retirement, after-tax NZ&nbsp;Super part-funds your spending and the rest
-          is withdrawn from savings &mdash; the personal account first, then KiwiSaver.
+          contribution up to {`$261`}/yr, income-tested). NZ&nbsp;Super isn&rsquo;t income-tested, so it is paid even if
+          you keep working past&nbsp;65. In retirement, after-tax NZ&nbsp;Super part-funds your spending and the rest is
+          withdrawn from savings &mdash; the personal account first, then KiwiSaver.
         </p>
         <p>
           <strong>NZ&nbsp;Superannuation.</strong> A flat, universal pension from age&nbsp;65. Unlike Canada&rsquo;s
@@ -31,7 +32,8 @@ export default function AssumptionsNote({ marginalRatePct, prescribedInvestorRat
           <strong>not taxed</strong>, and there is no tax on the withdrawal event itself &mdash; unlike a Canadian RRSP.
           Dividends and interest are taxed annually as a drag: inside KiwiSaver (a PIE) at your PIR (
           {prescribedInvestorRatePct.toFixed(0)}%, capped at 28%); in a personal account at your marginal rate (
-          {marginalRatePct.toFixed(1)}%). Because withdrawals aren&rsquo;t taxed, the order you draw accounts in barely
+          {marginalRatePct.toFixed(1)}% on your current income, falling once your salary stops in retirement). Because
+          withdrawals aren&rsquo;t taxed, the order you draw accounts in barely
           matters in NZ &mdash; which is why PWL&rsquo;s Canadian &ldquo;compare withdrawal strategies&rdquo; tab is
           omitted here.
         </p>

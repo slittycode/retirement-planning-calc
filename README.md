@@ -25,7 +25,7 @@ PWL's tool is built around Canadian retirement plumbing. This fork replaces each
 
 ## What it models
 
-- **Accumulation** (before your retirement age): income grows with wages and feeds KiwiSaver — your contribution, your employer's, and the government contribution (up to $521/yr).
+- **Accumulation** (before your retirement age): income grows with wages and feeds KiwiSaver — your contribution, your employer's, and the government contribution (up to $260.72/yr from the 1 July 2025 year, income-tested).
 - **Decumulation** (from your retirement age): after-tax NZ Super part-funds your spending; the rest is withdrawn from savings.
 - **NZ tax:** capital gains untaxed; dividends and interest taxed annually as a drag — at your PIR (capped 28%) inside KiwiSaver, or your marginal rate in a personal account; foreign withholding tax on foreign dividends.
 - **Market scenarios:** a constant return at a chosen percentile (Amazing → Terrible) as a quick stress test — not a Monte Carlo simulation.
