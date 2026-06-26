@@ -21,6 +21,13 @@ export const KIWISAVER_GOVT_FULL_AT = 1_042.86
 export const KIWISAVER_GOVT_INCOME_LIMIT = 180_000
 const KIWISAVER_GOVT_MAX_AGE = 65
 
+/**
+ * Age at which KiwiSaver funds unlock. They are locked in until the NZ Super
+ * qualifying age (currently 65), so a retiree younger than this must fund any
+ * spending gap from the personal account alone. https://www.ird.govt.nz/kiwisaver
+ */
+export const KIWISAVER_WITHDRAWAL_AGE = 65
+
 /** One year of the projection. Balances are end-of-year, nominal dollars. */
 export interface YearPoint {
   age: number
@@ -111,7 +118,9 @@ export function nzSuperNetForAge(inputs: Inputs, age: number, inflFactor: number
  *
  * Decumulation (from the retirement age): after-tax NZ Super and other income
  * part-fund the year's spending; the rest is withdrawn from savings — taxable
- * account first, then KiwiSaver. NZ has no tax on the withdrawal event, so the
+ * account first, then KiwiSaver (which is locked until age 65, so an earlier
+ * retiree must bridge the gap from the personal account alone). NZ has no tax on
+ * the withdrawal event, so the
  * drawdown order has only a second-order effect (via each account's annual tax
  * drag), which is why this tool omits PWL's Canadian withdrawal-sequencing
  * optimiser.
@@ -145,12 +154,16 @@ export function project(inputs: Inputs): ProjectionResult {
 
   const series: YearPoint[] = []
 
-  /** Draw an amount from savings (taxable first, then KiwiSaver); return what couldn't be met. */
-  function drawFromSavings(amount: number): { drawn: number; unmet: number } {
+  /**
+   * Draw an amount from savings (taxable first, then KiwiSaver); return what
+   * couldn't be met. KiwiSaver is only available once unlocked (age ≥ 65); before
+   * then the gap can only come from the personal account.
+   */
+  function drawFromSavings(amount: number, kiwiSaverAccessible: boolean): { drawn: number; unmet: number } {
     const fromTaxable = Math.min(taxable, amount)
     taxable -= fromTaxable
     let remaining = amount - fromTaxable
-    const fromKiwiSaver = Math.min(kiwiSaver, remaining)
+    const fromKiwiSaver = kiwiSaverAccessible ? Math.min(kiwiSaver, remaining) : 0
     kiwiSaver -= fromKiwiSaver
     remaining -= fromKiwiSaver
     return { drawn: fromTaxable + fromKiwiSaver, unmet: remaining }
@@ -160,6 +173,8 @@ export function project(inputs: Inputs): ProjectionResult {
     const t = age - startAge
     const working = age < retireAge
     const inflFactor = Math.pow(1 + infl, t)
+    // KiwiSaver is locked in until 65 (and never drawn before retiring).
+    const kiwiSaverAccessible = age >= Math.max(retireAge, KIWISAVER_WITHDRAWAL_AGE)
 
     let nzSuperNet = 0
     let otherIncomeNet = 0
@@ -195,7 +210,7 @@ export function project(inputs: Inputs): ProjectionResult {
       otherIncomeNet = inputs.otherIncomeTaxable ? otherGross - incomeTax(otherGross) : otherGross
 
       const need = Math.max(0, spending - nzSuperNet - otherIncomeNet)
-      const { drawn, unmet } = drawFromSavings(need)
+      const { drawn, unmet } = drawFromSavings(need, kiwiSaverAccessible)
       withdrawal = drawn
       shortfall = unmet
     }
@@ -206,7 +221,7 @@ export function project(inputs: Inputs): ProjectionResult {
     if (lumpNet > 0) {
       taxable += lumpNet
     } else if (lumpNet < 0) {
-      const { drawn, unmet } = drawFromSavings(-lumpNet)
+      const { drawn, unmet } = drawFromSavings(-lumpNet, kiwiSaverAccessible)
       withdrawal += drawn
       shortfall += unmet
     }

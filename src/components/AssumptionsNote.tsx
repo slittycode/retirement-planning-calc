@@ -20,7 +20,8 @@ export default function AssumptionsNote({ marginalRatePct, prescribedInvestorRat
           contribution &mdash; 25c per $1, up to {`$260.72`}/yr, on the post-July-2025 rules and not paid above the
           income threshold); anything you set aside as &ldquo;other saving&rdquo; builds your personal account. In
           retirement, after-tax NZ&nbsp;Super and any other income part-fund your spending and the rest is withdrawn from
-          savings &mdash; the personal account first, then KiwiSaver. Fees come straight off your return.
+          savings &mdash; the personal account first, then KiwiSaver, which is locked until age&nbsp;65, so retiring
+          earlier means bridging the gap from your personal account alone. Fees come straight off your return.
         </p>
         <p>
           <strong>Spending.</strong> Enter it either as a fixed today&rsquo;s-dollar amount or as a percentage of your
