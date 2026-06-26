@@ -30,14 +30,14 @@ There is no ESLint/Prettier — `npm run build` (the `tsc --noEmit` half) is the
 - `src/calc/` — **pure** calculation engine, no React. Keep it that way; it's unit-tested in `src/calc/calc.test.ts`.
   - `tax.ts` — NZ income tax brackets (1 April 2025), and after-tax returns for taxable (marginal rate) vs PIE/KiwiSaver (PIR, capped 28%) accounts. Capital gains untaxed.
   - `nzsuper.ts` — NZ Super gross rates by living situation + eligibility age. Rates are approximate and editable; update each April. A `couple` is a pooled household with NZ Super for both partners.
-  - `portfolio.ts` — `compositionForAllocation` (growth/income split → return-by-tax-character, calibrated so 100% growth reproduces PWL's defaults) and the scenario/volatility model.
+  - `portfolio.ts` — `compositionForAllocation` (growth/income split → return-by-tax-character, calibrated so 100% growth reproduces PWL's defaults), the scenario/volatility model, and `FUND_TYPES` / `nearestFundType` (the friendly KiwiSaver fund-type front door to `assetAllocationPct`).
   - `spending.ts` — `SpendingMode` ('fixed' | 'percentOfIncome'), `baseRealSpending` (replacement ratio → today's-dollar spend) and `realSpendingForYear` (applies the age-related real decline).
-  - `cashflows.ts` — recurring `otherIncome` (age window, taxable/inflation flags) and one-off `LumpSum`s (windfalls / costs); `sanitizeLumpSums` guards decoded URL input.
-  - `project.ts` — `project()` runs the year-by-year accumulation + decumulation, with KiwiSaver govt contribution (post-2025 rules), fees, pre-retirement personal saving, household NZ Super, other income and lump sums. Exports `accountReturns`, `nzSuperNetForAge`, `kiwiSaverGovtContribution` for reuse. Each `YearPoint` carries an `inflationFactor` so charts can show today's dollars.
+  - `cashflows.ts` — recurring `otherIncome` (age window, taxable/inflation flags), one-off `LumpSum`s (windfalls / costs), and `downsizeNetForAge` (tax-free home-equity release at the downsizing age); `sanitizeLumpSums` guards decoded URL input.
+  - `project.ts` — `project()` runs the year-by-year accumulation + decumulation, with KiwiSaver govt contribution (post-2025 rules), fees, pre-retirement personal saving, household NZ Super (paid even while working past eligibility), other income, lump sums and home downsizing. Exports `accountReturns` (working + lower `taxableRetired` rate), `nzSuperNetForAge`, `kiwiSaverGovtContribution` for reuse. Each `YearPoint` carries an `inflationFactor` so charts can show today's dollars.
   - `solve.ts` — back-calculations via bisection over `project()`: `sustainableSpending`, `requiredAnnualSavings`, `feasibleRetirementAge`, `requiredPortfolioAtRetirement`, and `fundedRatio` (PV of resources ÷ PV of spending, discounted at the expected after-tax return).
 - `src/components/` — thin React UI. `InputsPanel` groups the inputs (with `LumpSumEditor` for one-offs); `ResultsSummary` shows projection KPIs; `PlanningPanel` shows the funded ratio + back-calcs; `GrowthOfWealthChart` + `RetirementIncomeChart` behind `ChartTabs` (with a nominal / today's-dollars toggle).
 - `src/state/urlState.ts` — encode/decode every input to/from the URL (shareable links). `lumpSums` is JSON-encoded and only emitted when non-empty; `spendingMode` is validated like `returnScenario`.
-- `src/types.ts`, `src/defaults.ts`, `src/inputLimits.ts` — input schema, NZ defaults, per-field clamps. Every numeric `Inputs` key needs an entry in `NUMERIC_INPUT_LIMITS`.
+- `src/types.ts`, `src/defaults.ts`, `src/inputLimits.ts` — input schema, NZ defaults, per-field clamps. Includes the home fields (`homeValue`, `downsizeAge`, `downsizeReleaseAmount`). Every numeric `Inputs` key needs an entry in `NUMERIC_INPUT_LIMITS`.
 
 ## Conventions
 

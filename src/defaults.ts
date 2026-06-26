@@ -2,7 +2,7 @@ import type { Inputs } from './types'
 import { compositionForAllocation } from './calc/portfolio'
 import { NZ_SUPER_GROSS_ANNUAL, NZ_SUPER_ELIGIBILITY_AGE } from './calc/nzsuper'
 
-const DEFAULT_ALLOCATION = 60 // growth assets; a balanced retiree mix
+const DEFAULT_ALLOCATION = 50 // growth assets; matches the "Balanced" fund preset
 
 // Composition implied by the default allocation (drives the tax treatment).
 const composition = compositionForAllocation(DEFAULT_ALLOCATION)
@@ -42,6 +42,12 @@ export const NZ_DEFAULTS: Inputs = {
   otherIncomeTaxable: true,
   otherIncomeInflationAdjusted: true,
   lumpSums: [],
+
+  // Most Kiwi retirees own their home; default a modest value but release nothing,
+  // so the home shows as context without silently changing the projection.
+  homeValue: 800_000,
+  downsizeAge: 75,
+  downsizeReleaseAmount: 0,
 
   assetAllocationPct: DEFAULT_ALLOCATION,
   inflationPct: 2.5,

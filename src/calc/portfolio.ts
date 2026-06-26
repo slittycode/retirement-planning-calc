@@ -56,6 +56,30 @@ export function portfolioVolatility(allocationPct: number): number {
   return Math.sqrt((a * EQUITY_VOL) ** 2 + (income * BOND_VOL) ** 2)
 }
 
+/**
+ * Named KiwiSaver-style fund types, mapped to a growth-asset %. Most people know
+ * their fund type, not a precise growth/income split, so this is the friendly
+ * front door to `assetAllocationPct` (which still drives the composition). The
+ * percentages are typical of NZ retail funds and approximate — power users can
+ * still set an exact growth % directly.
+ */
+export const FUND_TYPES = {
+  defensive: 20,
+  conservative: 35,
+  balanced: 50,
+  growth: 70,
+  aggressive: 90,
+} as const
+export type FundType = keyof typeof FUND_TYPES
+export const FUND_TYPE_ORDER: FundType[] = ['defensive', 'conservative', 'balanced', 'growth', 'aggressive']
+
+/** The fund type whose growth-asset % is closest to a given allocation (for display). */
+export function nearestFundType(allocationPct: number): FundType {
+  return FUND_TYPE_ORDER.reduce((best, type) =>
+    Math.abs(FUND_TYPES[type] - allocationPct) < Math.abs(FUND_TYPES[best] - allocationPct) ? type : best,
+  )
+}
+
 export const RETURN_SCENARIOS = ['amazing', 'great', 'expected', 'bad', 'terrible'] as const
 export type ReturnScenario = (typeof RETURN_SCENARIOS)[number]
 

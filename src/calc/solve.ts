@@ -17,7 +17,7 @@ import {
 } from './project'
 import { incomeTax } from './tax'
 import { baseRealSpending, realSpendingForYear } from './spending'
-import { otherIncomeGrossForAge, lumpSumNetForAge } from './cashflows'
+import { otherIncomeGrossForAge, lumpSumNetForAge, downsizeNetForAge } from './cashflows'
 
 const moneyLasts = (inputs: Inputs): boolean => project(inputs).moneyLasts
 
@@ -181,6 +181,8 @@ export function fundedRatio(inputs: Inputs): FundedRatio {
       const otherNet = inputs.otherIncomeTaxable ? otherGross - incomeTax(otherGross) : otherGross
       pvAssets += otherNet * disc
     }
+
+    pvAssets += downsizeNetForAge(inputs, age, inflFactor) * disc
 
     const lumpNet = lumpSumNetForAge(inputs.lumpSums, age, inflFactor)
     if (lumpNet > 0) pvAssets += lumpNet * disc

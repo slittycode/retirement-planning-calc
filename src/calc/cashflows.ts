@@ -39,6 +39,25 @@ export function otherIncomeGrossForAge(i: OtherIncomeInputs, age: number, inflFa
   return i.otherIncomeInflationAdjusted ? i.otherIncomeAnnual * inflFactor : i.otherIncomeAnnual
 }
 
+export interface DownsizeInputs {
+  downsizeAge: number
+  downsizeReleaseAmount: number // today's $ equity freed (0 = no downsizing)
+  homeValue: number // caps the release
+}
+
+/**
+ * Equity released by downsizing at a given age, in nominal dollars (else 0). The
+ * release is capped at the home value and is tax-free — selling the family home
+ * isn't a taxable event in NZ. The home itself never enters the projection as a
+ * spendable asset; only this released amount does.
+ */
+export function downsizeNetForAge(i: DownsizeInputs, age: number, inflFactor: number): number {
+  if (i.downsizeReleaseAmount <= 0) return 0
+  if (Math.round(i.downsizeAge) !== age) return 0
+  const release = Math.min(Math.max(0, i.downsizeReleaseAmount), Math.max(0, i.homeValue))
+  return release * inflFactor
+}
+
 /** Net lump-sum cashflow at an age (income positive, expense negative), nominal. */
 export function lumpSumNetForAge(lumpSums: LumpSum[], age: number, inflFactor: number): number {
   let net = 0

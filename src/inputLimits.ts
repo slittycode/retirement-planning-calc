@@ -32,6 +32,10 @@ export const NUMERIC_INPUT_LIMITS: Record<NumericInputKey, NumericInputLimit> = 
   otherIncomeStartAge: { min: 50, max: 110 },
   otherIncomeEndAge: { min: 50, max: 110 },
 
+  homeValue: { min: 0 },
+  downsizeAge: { min: 50, max: 110 },
+  downsizeReleaseAmount: { min: 0 },
+
   assetAllocationPct: { min: 0, max: 100 },
   inflationPct: {},
   wageGrowthPct: {},
