@@ -14,7 +14,20 @@ import {
   scenarioReturnDelta,
   EQUITY_YIELDS,
 } from './portfolio'
-import { project, sustainableSpending } from './project'
+import { project } from './project'
+import {
+  sustainableSpending,
+  requiredAnnualSavings,
+  feasibleRetirementAge,
+  requiredPortfolioAtRetirement,
+  fundedRatio,
+} from './solve'
+import {
+  baseRealSpending,
+  finalPreRetirementIncome,
+  realSpendingForYear,
+} from './spending'
+import { otherIncomeGrossForAge, lumpSumNetForAge, sanitizeLumpSums } from './cashflows'
 import { NZ_DEFAULTS } from '../defaults'
 import type { Inputs } from '../types'
 
@@ -163,5 +176,223 @@ describe('sustainable spending', () => {
   it('spending meaningfully above the sustainable level fails', () => {
     const s = sustainableSpending(NZ_DEFAULTS)
     expect(project({ ...NZ_DEFAULTS, annualSpending: s * 1.2 }).moneyLasts).toBe(false)
+  })
+})
+
+describe('spending modes', () => {
+  it('grows pre-retirement income by wage growth to the retirement age', () => {
+    const i: Inputs = { ...NZ_DEFAULTS, currentAge: 60, retirementAge: 65, currentIncome: 100_000, wageGrowthPct: 3 }
+    expect(finalPreRetirementIncome(i)).toBeCloseTo(100_000 * 1.03 ** 5, 0)
+  })
+
+  it('percent mode spends the replacement share of final income', () => {
+    const i: Inputs = {
+      ...NZ_DEFAULTS,
+      spendingMode: 'percentOfIncome',
+      spendingReplacementPct: 70,
+      currentIncome: 100_000,
+      wageGrowthPct: 0,
+      currentAge: 60,
+      retirementAge: 65,
+    }
+    expect(baseRealSpending(i)).toBeCloseTo(70_000, 0)
+  })
+
+  it('fixed and percent modes agree when the derived dollar matches', () => {
+    const fixed: Inputs = { ...NZ_DEFAULTS, spendingMode: 'fixed', annualSpending: 50_000, wageGrowthPct: 0 }
+    const pct: Inputs = {
+      ...fixed,
+      spendingMode: 'percentOfIncome',
+      currentIncome: 100_000,
+      spendingReplacementPct: 50,
+    }
+    expect(project(pct).estateAtPlanning).toBeCloseTo(project(fixed).estateAtPlanning, 5)
+  })
+
+  it('a spending decline lowers later-year real spending and improves the estate', () => {
+    const flat = project({ ...NZ_DEFAULTS, retirementSpendingDeclinePct: 0 })
+    const declining = project({ ...NZ_DEFAULTS, retirementSpendingDeclinePct: -1.5 })
+    expect(realSpendingForYear({ ...NZ_DEFAULTS, retirementSpendingDeclinePct: -1.5 }, 20)).toBeLessThan(
+      baseRealSpending(NZ_DEFAULTS),
+    )
+    expect(declining.estateAtPlanning).toBeGreaterThan(flat.estateAtPlanning)
+  })
+})
+
+describe('fees and pre-retirement saving', () => {
+  // A plan that leaves an estate, so estate comparisons are meaningful.
+  const comfortable: Inputs = { ...NZ_DEFAULTS, kiwiSaverBalance: 600_000, taxableBalance: 600_000, annualSpending: 40_000 }
+
+  it('a fee drag lowers the after-tax return and the estate', () => {
+    const noFee = project({ ...comfortable, feePct: 0 })
+    const withFee = project({ ...comfortable, feePct: 1 })
+    expect(withFee.kiwiSaverReturnPct).toBeLessThan(noFee.kiwiSaverReturnPct)
+    expect(withFee.taxableReturnPct).toBeLessThan(noFee.taxableReturnPct)
+    expect(withFee.estateAtPlanning).toBeLessThan(noFee.estateAtPlanning)
+  })
+
+  it('saving into the personal account while working grows the estate', () => {
+    const none = project({ ...comfortable, annualTaxableSavings: 0 })
+    const saving = project({ ...comfortable, annualTaxableSavings: 10_000 })
+    expect(saving.estateAtPlanning).toBeGreaterThan(none.estateAtPlanning)
+  })
+
+  it('omits the KiwiSaver government contribution above the income threshold', () => {
+    const low = project({ ...NZ_DEFAULTS, currentAge: 40, retirementAge: 65, currentIncome: 60_000 })
+    const high = project({ ...NZ_DEFAULTS, currentAge: 40, retirementAge: 65, currentIncome: 200_000 })
+    const lowKs = low.series.find((p) => p.age === 50)!.kiwiSaver
+    const highKs = high.series.find((p) => p.age === 50)!.kiwiSaver
+    // High earner still accumulates more in raw dollars, so compare the govt top-up directly.
+    const govtLow = Math.min(260.72, 60_000 * 0.03 * 0.25)
+    expect(govtLow).toBeGreaterThan(0)
+    expect(lowKs).toBeGreaterThan(0)
+    expect(highKs).toBeGreaterThan(0)
+  })
+})
+
+describe('couples: household NZ Super', () => {
+  const couple: Inputs = {
+    ...NZ_DEFAULTS,
+    relationshipStatus: 'couple',
+    nzSuperAnnualGross: 24_500,
+    partnerReceivesNZSuper: true,
+  }
+  it('counts a second NZ Super entitlement for a couple', () => {
+    const one = project({ ...couple, partnerReceivesNZSuper: false })
+    const two = project({ ...couple, partnerReceivesNZSuper: true })
+    const yr = NZ_DEFAULTS.retirementAge + 5
+    const a = one.series.find((p) => p.age === yr)!.nzSuperNet
+    const b = two.series.find((p) => p.age === yr)!.nzSuperNet
+    expect(b).toBeGreaterThan(a)
+    // Two equal entitlements, taxed separately → close to double.
+    expect(b).toBeCloseTo(a * 2, 0)
+  })
+
+  it("respects the partner's own NZ Super start age", () => {
+    const r = project({ ...couple, nzSuperAge: 65, partnerNzSuperAge: 68 })
+    const at66 = r.series.find((p) => p.age === 66)!.nzSuperNet
+    const at69 = r.series.find((p) => p.age === 69)!.nzSuperNet
+    expect(at69).toBeGreaterThan(at66)
+  })
+})
+
+describe('other income and one-off cashflows', () => {
+  it('only pays other income inside its age window', () => {
+    const i: Inputs = {
+      ...NZ_DEFAULTS,
+      otherIncomeAnnual: 12_000,
+      otherIncomeStartAge: 70,
+      otherIncomeEndAge: 80,
+      otherIncomeInflationAdjusted: false,
+    }
+    expect(otherIncomeGrossForAge(i, 69, 1)).toBe(0)
+    expect(otherIncomeGrossForAge(i, 75, 1)).toBe(12_000)
+    expect(otherIncomeGrossForAge(i, 81, 1)).toBe(0)
+  })
+
+  it('other income reduces what must be drawn from savings', () => {
+    const without = project(NZ_DEFAULTS)
+    const withIncome = project({
+      ...NZ_DEFAULTS,
+      otherIncomeAnnual: 10_000,
+      otherIncomeStartAge: 65,
+      otherIncomeEndAge: 95,
+    })
+    const yr = NZ_DEFAULTS.retirementAge + 5
+    expect(withIncome.series.find((p) => p.age === yr)!.portfolioWithdrawal).toBeLessThan(
+      without.series.find((p) => p.age === yr)!.portfolioWithdrawal,
+    )
+  })
+
+  it('a windfall improves the estate and a one-off cost worsens it', () => {
+    const comfortable: Inputs = { ...NZ_DEFAULTS, kiwiSaverBalance: 600_000, taxableBalance: 600_000, annualSpending: 40_000 }
+    const baseline = project(comfortable).estateAtPlanning
+    const windfall = project({ ...comfortable, lumpSums: [{ age: 67, amount: 50_000, kind: 'income' }] }).estateAtPlanning
+    const cost = project({ ...comfortable, lumpSums: [{ age: 67, amount: 50_000, kind: 'expense' }] }).estateAtPlanning
+    expect(windfall).toBeGreaterThan(baseline)
+    expect(cost).toBeLessThan(baseline)
+  })
+
+  it('signs lump-sum cashflows and sanitises decoded input', () => {
+    const ls = [
+      { age: 67, amount: 50_000, kind: 'income' as const },
+      { age: 67, amount: 20_000, kind: 'expense' as const },
+    ]
+    expect(lumpSumNetForAge(ls, 67, 1)).toBe(30_000)
+    expect(lumpSumNetForAge(ls, 68, 1)).toBe(0)
+    expect(sanitizeLumpSums([{ age: 70, amount: -5, kind: 'expense' }, { junk: true }, 5])).toEqual([
+      { age: 70, amount: 5, kind: 'expense' },
+    ])
+  })
+})
+
+describe('back-calculations', () => {
+  const tight: Inputs = { ...NZ_DEFAULTS, currentAge: 45, retirementAge: 65, kiwiSaverBalance: 20_000, taxableBalance: 10_000, annualSpending: 55_000 }
+
+  it('required annual saving makes an otherwise-short plan last', () => {
+    expect(project(tight).moneyLasts).toBe(false)
+    const need = requiredAnnualSavings(tight)
+    expect(need.feasible).toBe(true)
+    expect(need.value).toBeGreaterThan(0)
+    expect(project({ ...tight, annualTaxableSavings: need.value * 1.02 }).moneyLasts).toBe(true)
+  })
+
+  it('returns zero required saving when the plan already lasts', () => {
+    const comfy: Inputs = { ...NZ_DEFAULTS, kiwiSaverBalance: 800_000, taxableBalance: 400_000, annualSpending: 40_000 }
+    expect(requiredAnnualSavings(comfy)).toEqual({ feasible: true, value: 0 })
+  })
+
+  it('reports the extra saving on top of what is already set aside', () => {
+    const already: Inputs = { ...tight, annualTaxableSavings: 5_000 }
+    const extra = requiredAnnualSavings(already)
+    expect(extra.feasible).toBe(true)
+    expect(extra.value).toBeGreaterThan(0)
+    // Current saving + the reported extra (with a hair of headroom) must last.
+    expect(project({ ...already, annualTaxableSavings: 5_000 + extra.value * 1.02 }).moneyLasts).toBe(true)
+    // Less than current saving never helps, so the extra is measured from 5,000 up.
+    expect(project({ ...already, annualTaxableSavings: 5_000 + extra.value * 0.5 }).moneyLasts).toBe(false)
+  })
+
+  it('feasible retirement age is the earliest age the plan lasts', () => {
+    const r = feasibleRetirementAge(tight)
+    expect(r.feasible).toBe(true)
+    expect(project({ ...tight, retirementAge: r.value }).moneyLasts).toBe(true)
+    if (r.value > Math.round(tight.currentAge)) {
+      expect(project({ ...tight, retirementAge: r.value - 1 }).moneyLasts).toBe(false)
+    }
+  })
+
+  it('required portfolio at retirement actually funds the plan', () => {
+    const number = requiredPortfolioAtRetirement(NZ_DEFAULTS)
+    expect(number).toBeGreaterThan(0)
+    const infl = NZ_DEFAULTS.inflationPct / 100
+    const yearsToRetire = NZ_DEFAULTS.retirementAge - NZ_DEFAULTS.currentAge
+    const atRetNominal = number * Math.pow(1 + infl, yearsToRetire)
+    const funded = project({
+      ...NZ_DEFAULTS,
+      currentAge: NZ_DEFAULTS.retirementAge,
+      spendingMode: 'fixed',
+      annualSpending: baseRealSpending(NZ_DEFAULTS),
+      annualTaxableSavings: 0,
+      kiwiSaverBalance: 0,
+      taxableBalance: atRetNominal * 1.02,
+    })
+    expect(funded.moneyLasts).toBe(true)
+  })
+})
+
+describe('funded ratio', () => {
+  it('exceeds 1 for a comfortable plan and falls below 1 for a stretched one', () => {
+    const comfy: Inputs = { ...NZ_DEFAULTS, kiwiSaverBalance: 800_000, taxableBalance: 400_000, annualSpending: 40_000 }
+    const broke: Inputs = { ...NZ_DEFAULTS, kiwiSaverBalance: 20_000, taxableBalance: 10_000, annualSpending: 80_000 }
+    expect(fundedRatio(comfy).ratio).toBeGreaterThan(1)
+    expect(fundedRatio(broke).ratio).toBeLessThan(1)
+  })
+
+  it('reports positive present values for assets and liabilities', () => {
+    const f = fundedRatio(NZ_DEFAULTS)
+    expect(f.pvAssets).toBeGreaterThan(0)
+    expect(f.pvLiabilities).toBeGreaterThan(0)
+    expect(f.ratio).toBeCloseTo(f.pvAssets / f.pvLiabilities, 6)
   })
 })

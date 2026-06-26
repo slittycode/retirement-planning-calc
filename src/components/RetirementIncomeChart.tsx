@@ -12,15 +12,28 @@ import {
 import type { ProjectionResult } from '../calc/project'
 import { formatNZD, formatNZDCompact } from '../format'
 
-export default function RetirementIncomeChart({ result, retirementAge }: { result: ProjectionResult; retirementAge: number }) {
+export default function RetirementIncomeChart({
+  result,
+  retirementAge,
+  real = false,
+}: {
+  result: ProjectionResult
+  retirementAge: number
+  real?: boolean
+}) {
+  const hasOtherIncome = result.series.some((p) => p.otherIncomeNet > 0.5)
   const data = result.series
     .filter((p) => p.age >= retirementAge)
-    .map((p) => ({
-      age: p.age,
-      'NZ Super': Math.round(p.nzSuperNet),
-      'From savings': Math.round(p.portfolioWithdrawal),
-      Spending: Math.round(p.spending),
-    }))
+    .map((p) => {
+      const f = real ? p.inflationFactor : 1
+      return {
+        age: p.age,
+        'NZ Super': Math.round(p.nzSuperNet / f),
+        'Other income': Math.round(p.otherIncomeNet / f),
+        'From savings': Math.round(p.portfolioWithdrawal / f),
+        Spending: Math.round(p.spending / f),
+      }
+    })
 
   return (
     <>
@@ -38,14 +51,16 @@ export default function RetirementIncomeChart({ result, retirementAge }: { resul
             />
             <Legend />
             <Bar dataKey="NZ Super" stackId="income" fill="#34d399" />
+            {hasOtherIncome && <Bar dataKey="Other income" stackId="income" fill="#a78bfa" />}
             <Bar dataKey="From savings" stackId="income" fill="#38bdf8" />
             <Line type="monotone" dataKey="Spending" stroke="#475569" strokeWidth={2} dot={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
       <p className="mt-2 text-xs text-slate-500">
-        Each retirement year, after-tax NZ Super plus withdrawals from savings fund your spending (the line). When the
-        bars fall short of the line, savings have run out.
+        Each retirement year, after-tax NZ Super{hasOtherIncome ? ', other income' : ''} plus withdrawals from savings
+        fund your spending (the line), in {real ? "today’s dollars" : 'nominal dollars'}. When the bars fall short of the
+        line, savings have run out.
       </p>
     </>
   )
