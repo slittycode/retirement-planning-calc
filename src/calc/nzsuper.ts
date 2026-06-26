@@ -9,21 +9,22 @@
  *     NZ 10 years since age 20, including 5 since age 50).
  *   - Taxed as ordinary income at the recipient's tax code.
  *
- * The amount depends on living situation. The figures below are approximate
- * GROSS annual rates around the 1 April 2025 adjustment (the "M" tax code,
- * before tax). They are editable in the UI — treat them as a starting estimate,
- * not the exact MSD figure, which changes every April.
+ * The amount depends on living situation. The figures below are GROSS annual
+ * rates for the 1 April 2025 adjustment (the "M" tax code, before tax), derived
+ * so the after-tax amount matches the published net rates. They are editable in
+ * the UI — treat them as a starting estimate, not the exact MSD figure, which
+ * changes every April.
  */
 
 export const RELATIONSHIP_STATUSES = ['single', 'couple'] as const
 export type RelationshipStatus = (typeof RELATIONSHIP_STATUSES)[number]
 
-/** Approximate gross annual NZ Super by living situation (per person). */
+/** Gross annual NZ Super by living situation (per person), 1 April 2025 rates. */
 export const NZ_SUPER_GROSS_ANNUAL: Record<RelationshipStatus, number> = {
-  // Single, living alone — ~$1,043/fortnight net grosses up to roughly this.
-  single: 32_000,
-  // Each partner where both qualify — ~$803/fortnight net each.
-  couple: 24_500,
+  // Single, living alone — $1,076.84/fortnight net (M) grosses up to ~$32,610.
+  single: 32_610,
+  // Each partner where both qualify — $828.34/fortnight net (M) each → ~$24,780.
+  couple: 24_780,
 }
 
 /** Standard NZ Super eligibility age. */

@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Inputs } from './types'
 import { NZ_DEFAULTS } from './defaults'
-import { project, sustainableSpending } from './calc/project'
+import { project } from './calc/project'
+import {
+  sustainableSpending,
+  requiredAnnualSavings,
+  feasibleRetirementAge,
+  requiredPortfolioAtRetirement,
+  fundedRatio,
+} from './calc/solve'
 import { marginalRate } from './calc/tax'
 import { compositionForAllocation } from './calc/portfolio'
 import { NZ_SUPER_GROSS_ANNUAL } from './calc/nzsuper'
 import { decodeInputs, encodeInputs } from './state/urlState'
 import InputsPanel from './components/InputsPanel'
 import ResultsSummary, { ReturnsSummary } from './components/ResultsSummary'
+import PlanningPanel from './components/PlanningPanel'
 import ChartTabs from './components/ChartTabs'
 import AssumptionsNote from './components/AssumptionsNote'
 
@@ -25,7 +33,16 @@ export default function App() {
   }, [inputs])
 
   const result = useMemo(() => project(inputs), [inputs])
-  const sustainable = useMemo(() => sustainableSpending(inputs), [inputs])
+  const planning = useMemo(
+    () => ({
+      sustainable: sustainableSpending(inputs),
+      requiredSavings: requiredAnnualSavings(inputs),
+      retireAge: feasibleRetirementAge(inputs),
+      requiredNumber: requiredPortfolioAtRetirement(inputs),
+      funded: fundedRatio(inputs),
+    }),
+    [inputs],
+  )
 
   function update<K extends keyof Inputs>(key: K, value: Inputs[K]) {
     setInputs((prev) => {
@@ -33,10 +50,16 @@ export default function App() {
       if (key === 'assetAllocationPct') {
         return { ...prev, assetAllocationPct: value as number, ...compositionForAllocation(value as number) }
       }
-      // Changing living situation resets NZ Super to the matching default rate.
+      // Changing living situation resets NZ Super to the matching default rate and
+      // turns the second NZ Super entitlement on for couples, off for singles.
       if (key === 'relationshipStatus') {
         const status = value as Inputs['relationshipStatus']
-        return { ...prev, relationshipStatus: status, nzSuperAnnualGross: NZ_SUPER_GROSS_ANNUAL[status] }
+        return {
+          ...prev,
+          relationshipStatus: status,
+          nzSuperAnnualGross: NZ_SUPER_GROSS_ANNUAL[status],
+          partnerReceivesNZSuper: status === 'couple',
+        }
       }
       return { ...prev, [key]: value }
     })
@@ -65,8 +88,8 @@ export default function App() {
         <div className="mx-auto max-w-6xl px-4 py-5">
           <h1 className="text-xl font-bold sm:text-2xl">Retirement Planning — New Zealand</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Project your savings through retirement with NZ Super, KiwiSaver and NZ tax. See whether your money lasts and
-            how much you can comfortably spend.
+            Project your savings through retirement with NZ Super, KiwiSaver and NZ tax. See whether your money lasts, how
+            much you can spend, what you need to save, and whether you&rsquo;re on track.
           </p>
         </div>
       </header>
@@ -94,7 +117,15 @@ export default function App() {
         </section>
 
         <section className="order-2 space-y-5 lg:order-1">
-          <ResultsSummary result={result} sustainableSpending={sustainable} planningAge={Math.round(inputs.planningAge)} />
+          <ResultsSummary result={result} sustainableSpending={planning.sustainable} planningAge={Math.round(inputs.planningAge)} />
+          <PlanningPanel
+            funded={planning.funded}
+            requiredSavings={planning.requiredSavings}
+            retireAge={planning.retireAge}
+            requiredNumber={planning.requiredNumber}
+            currentRetirementAge={Math.round(inputs.retirementAge)}
+            planningAge={Math.round(inputs.planningAge)}
+          />
           <ChartTabs result={result} retirementAge={Math.round(inputs.retirementAge)} />
           <div className="space-y-5 pt-1">
             <ReturnsSummary result={result} />

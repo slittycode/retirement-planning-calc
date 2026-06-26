@@ -13,20 +13,30 @@ export const NUMERIC_INPUT_LIMITS: Record<NumericInputKey, NumericInputLimit> = 
   retirementAge: { min: 18, max: 100 },
   planningAge: { min: 19, max: 110 },
   currentIncome: { min: 0 },
+
   annualSpending: { min: 0 },
+  spendingReplacementPct: { min: 0, max: 200 },
+  retirementSpendingDeclinePct: { min: -10, max: 10 },
 
   kiwiSaverBalance: { min: 0 },
   kiwiSaverContribPct: { min: 0, max: 100 },
   employerContribPct: { min: 0, max: 100 },
   taxableBalance: { min: 0 },
+  annualTaxableSavings: { min: 0 },
 
   nzSuperAge: { min: 60, max: 75 },
   nzSuperAnnualGross: { min: 0 },
+  partnerNzSuperAge: { min: 60, max: 75 },
+
+  otherIncomeAnnual: { min: 0 },
+  otherIncomeStartAge: { min: 50, max: 110 },
+  otherIncomeEndAge: { min: 50, max: 110 },
 
   assetAllocationPct: { min: 0, max: 100 },
   inflationPct: {},
   wageGrowthPct: {},
   prescribedInvestorRatePct: { min: 0, max: 28 },
+  feePct: { min: 0, max: 5 },
 
   eligibleDividendsPct: { min: 0 },
   foreignDividendsPct: { min: 0 },
