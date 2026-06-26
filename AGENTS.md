@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-Guidance for Claude Code when working in this repository.
+Guidance for Codex when working in this repository.
 
 ## What this is
 
@@ -23,7 +23,7 @@ npx vitest run -t "sustainable spending"
 
 There is no ESLint/Prettier — `npm run build` (the `tsc --noEmit` half) is the only static check, so run it before claiming type-safety. CI (`.github/workflows/ci.yml`) runs build + test; pushes to `main` deploy to GitHub Pages via `deploy.yml`.
 
-`AGENTS.md` is a verbatim copy of this file for Codex — keep the two in sync when you edit either.
+`CLAUDE.md` is a verbatim copy of this file for Claude Code — keep the two in sync when you edit either.
 
 ## Architecture
 
