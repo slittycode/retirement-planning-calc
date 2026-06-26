@@ -12,12 +12,23 @@ import {
 import type { ProjectionResult } from '../calc/project'
 import { formatNZD, formatNZDCompact } from '../format'
 
-export default function GrowthOfWealthChart({ result, retirementAge }: { result: ProjectionResult; retirementAge: number }) {
-  const data = result.series.map((p) => ({
-    age: p.age,
-    KiwiSaver: Math.round(p.kiwiSaver),
-    'Other investments': Math.round(p.taxable),
-  }))
+export default function GrowthOfWealthChart({
+  result,
+  retirementAge,
+  real = false,
+}: {
+  result: ProjectionResult
+  retirementAge: number
+  real?: boolean
+}) {
+  const data = result.series.map((p) => {
+    const f = real ? p.inflationFactor : 1
+    return {
+      age: p.age,
+      KiwiSaver: Math.round(p.kiwiSaver / f),
+      'Other investments': Math.round(p.taxable / f),
+    }
+  })
 
   return (
     <>
@@ -46,8 +57,8 @@ export default function GrowthOfWealthChart({ result, retirementAge }: { result:
         </ResponsiveContainer>
       </div>
       <p className="mt-2 text-xs text-slate-500">
-        Total savings (KiwiSaver + other investments) by age, in nominal dollars. Balances build while you work, then
-        are drawn down in retirement to top up NZ Super.
+        Total savings (KiwiSaver + other investments) by age, in {real ? "today’s dollars" : 'nominal dollars'}. Balances
+        build while you work, then are drawn down in retirement to top up NZ Super and any other income.
       </p>
     </>
   )

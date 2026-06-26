@@ -25,12 +25,19 @@ PWL's tool is built around Canadian retirement plumbing. This fork replaces each
 
 ## What it models
 
-- **Accumulation** (before your retirement age): income grows with wages and feeds KiwiSaver — your contribution, your employer's, and the government contribution (up to $521/yr).
-- **Decumulation** (from your retirement age): after-tax NZ Super part-funds your spending; the rest is withdrawn from savings.
+- **Accumulation** (before your retirement age): income grows with wages and feeds KiwiSaver — your contribution, your employer's, and the government contribution (25c per $1, up to $260.72/yr on the post-July-2025 rules, income-tested). Anything you set aside as "other saving" builds your personal account.
+- **Decumulation** (from your retirement age): after-tax NZ Super and any other income part-fund your spending; the rest is withdrawn from savings. Investment fees come straight off the return.
+- **Spending, two ways:** a fixed today's-dollar amount, or a percentage of your final pre-retirement income (a replacement ratio). Real spending can also drift with age (the go-go / slow-go / no-go pattern), and one-off events — windfalls (inheritance, downsizing) and costs (travel, a car, the roof) — land at the age you choose.
+- **Couples:** modelled as a pooled household with combined balances and income, but NZ Super counted for **both** partners (each taxed separately).
+- **Other income:** a recurring private/defined-benefit pension, part-time work, rental, or annuity, with its own age window and tax treatment.
 - **NZ tax:** capital gains untaxed; dividends and interest taxed annually as a drag — at your PIR (capped 28%) inside KiwiSaver, or your marginal rate in a personal account; foreign withholding tax on foreign dividends.
 - **Market scenarios:** a constant return at a chosen percentile (Amazing → Terrible) as a quick stress test — not a Monte Carlo simulation.
 
-**Headline outputs:** whether your money lasts (or the age it runs out), your sustainable yearly spending in today's dollars, your savings peak, and the estate left at your planning age. Two charts: savings over time, and where retirement income comes from each year.
+**Headline outputs:** whether your money lasts (or the age it runs out), your sustainable yearly spending, your savings peak, and the estate left at your planning age.
+
+**Back-calculations ("what do I need?"):** the extra you'd need to save each year, the earliest age you could retire, the nest egg ("your number") needed at retirement, and a **funded ratio** — the present value of everything that can pay for retirement over everything it must pay for, discounted at your expected after-tax return; 1.00× or more means on track.
+
+Two charts (toggle nominal / today's dollars): savings over time, and where retirement income comes from each year.
 
 ## Tech
 
@@ -41,7 +48,10 @@ The calculation engine lives in `src/calc/` as pure, separately tested functions
 - `tax.ts` — NZ income tax, and after-tax returns for taxable vs PIE/KiwiSaver accounts
 - `nzsuper.ts` — NZ Super rates and eligibility
 - `portfolio.ts` — allocation → return composition, plus the scenario/volatility model
-- `project.ts` — the year-by-year accumulation + decumulation projection, and the sustainable-spending search
+- `spending.ts` — the spending model: fixed vs % of income, and the age-related decline
+- `cashflows.ts` — other income and one-off lump sums (windfalls / costs)
+- `project.ts` — the year-by-year accumulation + decumulation projection
+- `solve.ts` — the back-calculations (sustainable spend, required saving, retirement age, "your number") and the funded ratio
 
 ## Develop
 

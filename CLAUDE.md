@@ -29,19 +29,22 @@ There is no ESLint/Prettier — `npm run build` (the `tsc --noEmit` half) is the
 
 - `src/calc/` — **pure** calculation engine, no React. Keep it that way; it's unit-tested in `src/calc/calc.test.ts`.
   - `tax.ts` — NZ income tax brackets (1 April 2025), and after-tax returns for taxable (marginal rate) vs PIE/KiwiSaver (PIR, capped 28%) accounts. Capital gains untaxed.
-  - `nzsuper.ts` — NZ Super gross rates by living situation + eligibility age. Rates are approximate and editable; update each April.
+  - `nzsuper.ts` — NZ Super gross rates by living situation + eligibility age. Rates are approximate and editable; update each April. A `couple` is a pooled household with NZ Super for both partners.
   - `portfolio.ts` — `compositionForAllocation` (growth/income split → return-by-tax-character, calibrated so 100% growth reproduces PWL's defaults) and the scenario/volatility model.
-  - `project.ts` — `project()` runs the year-by-year accumulation + decumulation; `sustainableSpending()` binary-searches the max flat real spend that lasts to the planning age.
-- `src/components/` — thin React UI. `InputsPanel` groups the inputs; `ResultsSummary` shows KPIs; `GrowthOfWealthChart` + `RetirementIncomeChart` behind `ChartTabs`.
-- `src/state/urlState.ts` — encode/decode every input to/from the URL (shareable links).
-- `src/types.ts`, `src/defaults.ts`, `src/inputLimits.ts` — input schema, NZ defaults, per-field clamps.
+  - `spending.ts` — `SpendingMode` ('fixed' | 'percentOfIncome'), `baseRealSpending` (replacement ratio → today's-dollar spend) and `realSpendingForYear` (applies the age-related real decline).
+  - `cashflows.ts` — recurring `otherIncome` (age window, taxable/inflation flags) and one-off `LumpSum`s (windfalls / costs); `sanitizeLumpSums` guards decoded URL input.
+  - `project.ts` — `project()` runs the year-by-year accumulation + decumulation, with KiwiSaver govt contribution (post-2025 rules), fees, pre-retirement personal saving, household NZ Super, other income and lump sums. Exports `accountReturns`, `nzSuperNetForAge`, `kiwiSaverGovtContribution` for reuse. Each `YearPoint` carries an `inflationFactor` so charts can show today's dollars.
+  - `solve.ts` — back-calculations via bisection over `project()`: `sustainableSpending`, `requiredAnnualSavings`, `feasibleRetirementAge`, `requiredPortfolioAtRetirement`, and `fundedRatio` (PV of resources ÷ PV of spending, discounted at the expected after-tax return).
+- `src/components/` — thin React UI. `InputsPanel` groups the inputs (with `LumpSumEditor` for one-offs); `ResultsSummary` shows projection KPIs; `PlanningPanel` shows the funded ratio + back-calcs; `GrowthOfWealthChart` + `RetirementIncomeChart` behind `ChartTabs` (with a nominal / today's-dollars toggle).
+- `src/state/urlState.ts` — encode/decode every input to/from the URL (shareable links). `lumpSums` is JSON-encoded and only emitted when non-empty; `spendingMode` is validated like `returnScenario`.
+- `src/types.ts`, `src/defaults.ts`, `src/inputLimits.ts` — input schema, NZ defaults, per-field clamps. Every numeric `Inputs` key needs an entry in `NUMERIC_INPUT_LIMITS`.
 
 ## Conventions
 
 - Percentages are whole numbers in `Inputs` (5.5 = 5.5%); dollars are NZD.
-- Changing `assetAllocationPct` resets the return-composition fields; changing `relationshipStatus` resets `nzSuperAnnualGross`. Both live in `App.update`.
-- Engine functions are pure and tested; add a test in `calc.test.ts` when you change the maths.
-- Keep the NZ simplifications honest and documented in `AssumptionsNote.tsx` (no CGT, withdrawals untaxed, no FIF/ESCT/ACC, returns are smooth or single-percentile not Monte Carlo).
+- Changing `assetAllocationPct` resets the return-composition fields; changing `relationshipStatus` resets `nzSuperAnnualGross` and toggles `partnerReceivesNZSuper`. Both live in `App.update`.
+- Engine functions are pure and tested; add a test in `calc.test.ts` when you change the maths. Estate-comparison tests must use a scenario that actually leaves an estate (the default scenario depletes to zero).
+- Keep the NZ simplifications honest and documented in `AssumptionsNote.tsx` (no CGT, withdrawals untaxed, no FIF/ESCT/ACC, returns smooth or single-percentile not Monte Carlo, couples keep two NZ Supers to the planning age with no separate mortality).
 
 ## NZ vs Canada
 
