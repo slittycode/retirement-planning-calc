@@ -13,6 +13,8 @@ import {
   portfolioVolatility,
   scenarioReturnDelta,
   EQUITY_YIELDS,
+  FUND_TYPES,
+  nearestFundType,
 } from './portfolio'
 import { project } from './project'
 import {
@@ -27,7 +29,7 @@ import {
   finalPreRetirementIncome,
   realSpendingForYear,
 } from './spending'
-import { otherIncomeGrossForAge, lumpSumNetForAge, sanitizeLumpSums } from './cashflows'
+import { otherIncomeGrossForAge, lumpSumNetForAge, sanitizeLumpSums, downsizeNetForAge } from './cashflows'
 import { NZ_DEFAULTS } from '../defaults'
 import type { Inputs } from '../types'
 
@@ -68,6 +70,17 @@ describe('return composition', () => {
     const income = compositionForAllocation(0)
     expect(income.interestIncomePct).toBeGreaterThan(growth.interestIncomePct)
     expect(income.unrealizedGainsPct).toBe(0)
+  })
+})
+
+describe('fund types', () => {
+  it('maps an allocation to the nearest named fund', () => {
+    expect(nearestFundType(0)).toBe('defensive')
+    expect(nearestFundType(100)).toBe('aggressive')
+    expect(nearestFundType(FUND_TYPES.growth)).toBe('growth')
+    // The default (50% growth) is exactly the Balanced preset; in-between values snap.
+    expect(nearestFundType(50)).toBe('balanced')
+    expect(nearestFundType(62)).toBe('growth')
   })
 })
 
@@ -350,6 +363,33 @@ describe('other income and one-off cashflows', () => {
     expect(sanitizeLumpSums([{ age: 70, amount: -5, kind: 'expense' }, { junk: true }, 5])).toEqual([
       { age: 70, amount: 5, kind: 'expense' },
     ])
+  })
+})
+
+describe('home downsizing', () => {
+  it('releases equity only at the downsizing age, inflation-adjusted and capped at the home value', () => {
+    const i = { downsizeAge: 75, downsizeReleaseAmount: 300_000, homeValue: 800_000 }
+    expect(downsizeNetForAge(i, 74, 1)).toBe(0)
+    expect(downsizeNetForAge(i, 75, 1)).toBe(300_000)
+    expect(downsizeNetForAge(i, 75, 2)).toBe(600_000)
+    expect(downsizeNetForAge({ ...i, downsizeReleaseAmount: 0 }, 75, 1)).toBe(0)
+    expect(downsizeNetForAge({ ...i, downsizeReleaseAmount: 900_000 }, 75, 1)).toBe(800_000)
+  })
+
+  it('a release improves the estate, and zero release (the default) changes nothing', () => {
+    const comfortable: Inputs = { ...NZ_DEFAULTS, kiwiSaverBalance: 600_000, taxableBalance: 600_000, annualSpending: 40_000 }
+    const baseline = project(comfortable).estateAtPlanning
+    const noRelease = project({ ...comfortable, downsizeReleaseAmount: 0 }).estateAtPlanning
+    const downsized = project({ ...comfortable, downsizeAge: 75, downsizeReleaseAmount: 200_000 }).estateAtPlanning
+    expect(noRelease).toBe(baseline)
+    expect(downsized).toBeGreaterThan(baseline)
+  })
+
+  it('downsizing raises the funded ratio', () => {
+    const tight: Inputs = { ...NZ_DEFAULTS, currentAge: 64, kiwiSaverBalance: 50_000, taxableBalance: 20_000, annualSpending: 55_000 }
+    const before = fundedRatio(tight).ratio
+    const after = fundedRatio({ ...tight, downsizeAge: 70, downsizeReleaseAmount: 250_000 }).ratio
+    expect(after).toBeGreaterThan(before)
   })
 })
 

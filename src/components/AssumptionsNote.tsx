@@ -53,6 +53,13 @@ export default function AssumptionsNote({ marginalRatePct, prescribedInvestorRat
           PWL&rsquo;s Canadian &ldquo;compare withdrawal strategies&rdquo; tab is omitted here.
         </p>
         <p>
+          <strong>Your home.</strong> The family home is usually a retiree&rsquo;s largest asset, but it isn&rsquo;t
+          counted as savings here &mdash; you live in it, so it can&rsquo;t fund day-to-day spending. The one way it
+          enters the plan is <strong>downsizing</strong>: the equity you free up by moving to a cheaper place is added to
+          your savings, tax-free, at the age you set (selling the family home isn&rsquo;t taxed in NZ). Reverse mortgages
+          and home running costs (rates, insurance, upkeep) aren&rsquo;t modelled &mdash; put those costs in your spending.
+        </p>
+        <p>
           <strong>Caveats.</strong> Charts can be shown in nominal or today&rsquo;s dollars; the headline figures
           (&ldquo;sustainable spending&rdquo;, &ldquo;your number&rdquo;, the funded ratio&rsquo;s present values) are
           in today&rsquo;s dollars. Returns are a smooth average (or a single chosen percentile under &ldquo;market

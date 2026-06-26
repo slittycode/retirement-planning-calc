@@ -1,6 +1,6 @@
 import type { Inputs } from '../types'
 import { NUMERIC_INPUT_LIMITS, type NumericInputKey } from '../inputLimits'
-import { RETURN_SCENARIOS } from '../calc/portfolio'
+import { RETURN_SCENARIOS, FUND_TYPES, FUND_TYPE_ORDER, nearestFundType, type FundType } from '../calc/portfolio'
 import { RELATIONSHIP_STATUSES } from '../calc/nzsuper'
 import { SPENDING_MODES, baseRealSpending } from '../calc/spending'
 import { formatNZD } from '../format'
@@ -28,6 +28,14 @@ const SCENARIO_LABELS: Record<(typeof RETURN_SCENARIOS)[number], string> = {
 const SPENDING_MODE_LABELS: Record<(typeof SPENDING_MODES)[number], string> = {
   fixed: 'A fixed dollar amount',
   percentOfIncome: '% of pre-retirement income',
+}
+
+const FUND_TYPE_LABELS: Record<FundType, string> = {
+  defensive: 'Defensive',
+  conservative: 'Conservative',
+  balanced: 'Balanced',
+  growth: 'Growth',
+  aggressive: 'Aggressive',
 }
 
 export default function InputsPanel({ inputs, update }: Props) {
@@ -170,14 +178,37 @@ export default function InputsPanel({ inputs, update }: Props) {
         />
       </details>
 
+      <details className={cardClass}>
+        <summary className={`cursor-pointer ${headingClass}`}>Your home</summary>
+        <p className="mt-3 text-xs text-slate-500">
+          For most retirees the home is the biggest asset. It isn&rsquo;t counted as savings here (you live in it) &mdash;
+          only equity you free up by <strong>downsizing</strong> enters the plan, tax-free, at the age you choose. Set the
+          amount to 0 if you don&rsquo;t plan to downsize. Rates, insurance and upkeep belong in your spending figure.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {num('homeValue', 'Home value', { prefix: '$', step: 10000, tooltip: 'Roughly what your home is worth today. Used for context and to cap the equity you can release.' })}
+          {num('downsizeReleaseAmount', 'Equity released by downsizing', { prefix: '$', step: 10000, tooltip: 'Cash freed up by moving to a cheaper home, in today’s dollars. 0 = not downsizing.' })}
+          {num('downsizeAge', 'Downsize at age', { suffix: 'yrs', tooltip: 'The age you plan to downsize and release that equity.' })}
+        </div>
+        {inputs.downsizeReleaseAmount > inputs.homeValue && (
+          <p className="mt-2 text-xs text-amber-700">Equity released is capped at your home value.</p>
+        )}
+      </details>
+
       <details className={cardClass} open>
         <summary className={`cursor-pointer ${headingClass}`}>Investment returns</summary>
         <p className="mt-3 text-xs text-slate-500">
-          Returns come from your growth/income split. In NZ, capital-gains rows are not taxed; dividends and interest
-          are (at your PIR inside KiwiSaver, or your marginal rate in a personal account). Fees are a direct drag.
+          Pick the KiwiSaver fund type that matches yours. It sets the growth/income mix behind the scenes; fine-tune the
+          exact split and tax treatment under Advanced if you want.
         </p>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <AllocationSelect value={inputs.assetAllocationPct} onChange={(v) => update('assetAllocationPct', v)} />
+          <SelectField
+            label="Fund type"
+            value={nearestFundType(inputs.assetAllocationPct)}
+            onChange={(v) => update('assetAllocationPct', FUND_TYPES[v])}
+            tooltip="Defensive → Aggressive. Higher growth means higher expected return and more ups and downs."
+            options={FUND_TYPE_ORDER.map((t) => ({ value: t, label: `${FUND_TYPE_LABELS[t]} (${FUND_TYPES[t]}% growth)` }))}
+          />
           <SelectField
             label="Market scenario"
             value={inputs.returnScenario}
@@ -188,14 +219,27 @@ export default function InputsPanel({ inputs, update }: Props) {
           {num('feePct', 'Investment fees', { suffix: '%', step: 0.05, tooltip: 'Annual fund fee (MER) as a % of your balance. Comes straight off your return — small differences compound.' })}
           {num('inflationPct', 'Inflation', { suffix: '%', step: 0.1, tooltip: 'Grows spending and NZ Super over time.' })}
           {num('wageGrowthPct', 'Wage growth', { suffix: '%', step: 0.1, tooltip: 'Grows your income (and KiwiSaver contributions) while working.' })}
-          {num('prescribedInvestorRatePct', 'PIR (KiwiSaver)', { suffix: '%', step: 0.5, tooltip: 'Prescribed Investor Rate on KiwiSaver/PIE income, capped at 28%.' })}
-          {num('eligibleDividendsPct', 'NZ dividends', { suffix: '%', step: 0.05, tooltip: 'Taxed at your PIR/marginal rate.' })}
-          {num('foreignDividendsPct', 'Foreign dividends', { suffix: '%', step: 0.05, tooltip: 'Taxed, with foreign withholding tax applied.' })}
-          {num('interestIncomePct', 'Interest income', { suffix: '%', step: 0.05, tooltip: 'Taxed at your PIR/marginal rate.' })}
-          {num('realizedGainsPct', 'Realised capital gains', { suffix: '%', step: 0.05, tooltip: 'Not taxed in this simplified NZ model.' })}
-          {num('unrealizedGainsPct', 'Unrealised capital gains', { suffix: '%', step: 0.05, tooltip: 'Not taxed in this simplified NZ model.' })}
-          {num('foreignWithholdingTaxPct', 'Foreign withholding tax', { suffix: '%', step: 1, tooltip: 'Rate withheld at source on foreign dividends.' })}
         </div>
+
+        <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Advanced — fine-tune returns &amp; tax
+          </summary>
+          <p className="mt-3 text-xs text-slate-500">
+            Set the exact growth share and the return&rsquo;s tax breakdown. In NZ, capital-gains rows are not taxed;
+            dividends and interest are (at your PIR inside KiwiSaver, or your marginal rate in a personal account).
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <AllocationSelect value={inputs.assetAllocationPct} onChange={(v) => update('assetAllocationPct', v)} />
+            {num('prescribedInvestorRatePct', 'PIR (KiwiSaver)', { suffix: '%', step: 0.5, tooltip: 'Prescribed Investor Rate on KiwiSaver/PIE income, capped at 28%.' })}
+            {num('eligibleDividendsPct', 'NZ dividends', { suffix: '%', step: 0.05, tooltip: 'Taxed at your PIR/marginal rate.' })}
+            {num('foreignDividendsPct', 'Foreign dividends', { suffix: '%', step: 0.05, tooltip: 'Taxed, with foreign withholding tax applied.' })}
+            {num('interestIncomePct', 'Interest income', { suffix: '%', step: 0.05, tooltip: 'Taxed at your PIR/marginal rate.' })}
+            {num('realizedGainsPct', 'Realised capital gains', { suffix: '%', step: 0.05, tooltip: 'Not taxed in this simplified NZ model.' })}
+            {num('unrealizedGainsPct', 'Unrealised capital gains', { suffix: '%', step: 0.05, tooltip: 'Not taxed in this simplified NZ model.' })}
+            {num('foreignWithholdingTaxPct', 'Foreign withholding tax', { suffix: '%', step: 1, tooltip: 'Rate withheld at source on foreign dividends.' })}
+          </div>
+        </details>
       </details>
     </div>
   )

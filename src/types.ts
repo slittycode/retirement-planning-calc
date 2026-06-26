@@ -53,6 +53,13 @@ export interface Inputs {
   otherIncomeInflationAdjusted: boolean
   lumpSums: LumpSum[] // one-off windfalls / expenses
 
+  // Home — context plus the one lever that matters: releasing equity by downsizing.
+  // The home itself is NOT a spendable asset (you live in it); only the released
+  // equity enters the projection, tax-free, at the downsizing age.
+  homeValue: number // today's $; informational, and caps the equity that can be released
+  downsizeAge: number // age you downsize / release equity
+  downsizeReleaseAmount: number // today's $ freed and added to savings (0 = no downsizing)
+
   // Portfolio / returns
   assetAllocationPct: number // % growth assets; remainder income assets
   inflationPct: number

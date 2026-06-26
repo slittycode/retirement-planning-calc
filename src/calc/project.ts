@@ -7,7 +7,7 @@ import {
 } from './tax'
 import { scenarioReturnDelta } from './portfolio'
 import { realSpendingForYear } from './spending'
-import { otherIncomeGrossForAge, lumpSumNetForAge } from './cashflows'
+import { otherIncomeGrossForAge, lumpSumNetForAge, downsizeNetForAge } from './cashflows'
 
 /**
  * KiwiSaver government contribution, on the post-1-July-2025 rules: 25c per $1 of
@@ -199,6 +199,9 @@ export function project(inputs: Inputs): ProjectionResult {
       withdrawal = drawn
       shortfall = unmet
     }
+
+    // Downsizing the home at this age releases equity (tax-free) into the personal account.
+    taxable += downsizeNetForAge(inputs, age, inflFactor)
 
     // One-off lump sums at this age: income tops up the personal account; an
     // expense is drawn from savings like any other outflow.

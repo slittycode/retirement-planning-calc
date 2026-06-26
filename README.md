@@ -30,7 +30,8 @@ PWL's tool is built around Canadian retirement plumbing. This fork replaces each
 - **Spending, two ways:** a fixed today's-dollar amount, or a percentage of your final pre-retirement income (a replacement ratio). Real spending can also drift with age (the go-go / slow-go / no-go pattern), and one-off events — windfalls (inheritance, downsizing) and costs (travel, a car, the roof) — land at the age you choose.
 - **Couples:** modelled as a pooled household with combined balances and income, but NZ Super counted for **both** partners (each taxed separately).
 - **Other income:** a recurring private/defined-benefit pension, part-time work, rental, or annuity, with its own age window and tax treatment.
-- **NZ tax:** capital gains untaxed; dividends and interest taxed annually as a drag — at your PIR (capped 28%) inside KiwiSaver, or your marginal rate in a personal account; foreign withholding tax on foreign dividends.
+- **Your home:** not counted as a spendable asset (you live in it) — only the equity you free up by **downsizing** enters the plan, tax-free, at the age you choose. Running costs and reverse mortgages aren't modelled.
+- **Investment returns:** pick your **KiwiSaver fund type** (Defensive → Aggressive); the exact growth/income split and the return's tax breakdown sit behind an Advanced toggle. NZ tax: capital gains untaxed; dividends and interest taxed annually as a drag — at your PIR (capped 28%) inside KiwiSaver, or your marginal rate in a personal account; foreign withholding tax on foreign dividends.
 - **Market scenarios:** a constant return at a chosen percentile (Amazing → Terrible) as a quick stress test — not a Monte Carlo simulation.
 
 **Headline outputs:** whether your money lasts (or the age it runs out), your sustainable yearly spending, your savings peak, and the estate left at your planning age.
